@@ -4,6 +4,147 @@ This file is generated during init for the selected agent.
 
 You are an expert AI assistant specializing in Spec-Driven Development (SDD). Your primary goal is to work with the architext to build products.
 
+## Project Overview
+
+**Project Type:** Multi-User Web Todo Application
+**Development Approach:** Agentic Dev Stack workflow - Write spec → Generate plan → Break into tasks → Implement via Claude Code. No manual coding allowed.
+
+**Objective:** Transform a console app into a modern multi-user web application with persistent storage using Claude Code and Spec-Kit Plus.
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16+ (App Router) |
+| Backend | Python FastAPI |
+| ORM | SQLModel |
+| Database | Neon Serverless PostgreSQL |
+| Authentication | Better Auth (JWT-based) |
+| Spec-Driven | Claude Code + Spec-Kit Plus |
+
+## Specialized Agents
+
+This project uses specialized Claude Code agents for different domains. You MUST delegate to these agents when working on their respective areas:
+
+### 1. Auth Agent (`auth-security-specialist`)
+**When to Use:** Always delegate authentication and authorization tasks to this agent.
+
+**Responsibilities:**
+- User signup/signin flows
+- Password hashing and validation
+- JWT token generation and verification
+- Better Auth integration
+- Session management
+- Route protection and middleware
+- Security best practices
+
+**Better Auth JWT Workflow:**
+1. User logs in on Frontend → Better Auth creates session and issues JWT token
+2. Frontend makes API call → Includes JWT in `Authorization: Bearer <token>` header
+3. Backend receives request → Extracts token from header, verifies signature using shared secret
+4. Backend identifies user → Decodes token to get user ID, email, etc.
+5. Backend filters data → Returns only tasks belonging to authenticated user
+
+**Invocation:** Use the Task tool with `subagent_type: "auth-security-specialist"` for all authentication-related work.
+
+### 2. Frontend Agent (`nextjs-frontend-builder`)
+**When to Use:** Always delegate frontend UI development to this agent.
+
+**Responsibilities:**
+- Next.js App Router pages and layouts
+- Server and Client Components
+- Responsive design with Tailwind CSS
+- Mobile-first layouts
+- Form handling and validation
+- API integration (calling FastAPI backend)
+- Protected routes and client-side auth checks
+
+**Technical Requirements:**
+- Use Next.js 16+ App Router conventions
+- Implement mobile-first responsive design
+- Create accessible, modern React components
+- Integrate with FastAPI backend via fetch/axios
+- Handle JWT tokens in Authorization headers
+
+**Invocation:** Use the Task tool with `subagent_type: "nextjs-frontend-builder"` for all frontend work.
+
+### 3. Database Agent (`neon-db-manager`)
+**When to Use:** Always delegate database design and operations to this agent.
+
+**Responsibilities:**
+- Database schema design for Neon Serverless PostgreSQL
+- Table creation with proper constraints
+- Migration scripts
+- Query optimization
+- Connection pooling configuration
+- Database troubleshooting
+- Data integrity and relationships
+
+**Technical Requirements:**
+- Design schemas for multi-user data isolation
+- Ensure proper foreign key relationships
+- Optimize for serverless PostgreSQL patterns
+- Handle connection pooling for Neon
+
+**Invocation:** Use the Task tool with `subagent_type: "neon-db-manager"` for all database work.
+
+### 4. Backend Agent (`fastapi-backend-dev`)
+**When to Use:** Always delegate FastAPI backend development to this agent.
+
+**Responsibilities:**
+- REST API endpoint creation
+- Request/response validation with Pydantic
+- SQLModel ORM integration
+- JWT token verification middleware
+- User-specific data filtering
+- Error handling and HTTP status codes
+- CORS configuration
+- API documentation
+
+**Technical Requirements:**
+- Create RESTful endpoints following REST conventions
+- Implement JWT authentication middleware
+- Use SQLModel for database operations
+- Filter all data by authenticated user ID
+- Validate all inputs with Pydantic models
+- Return appropriate HTTP status codes
+
+**Invocation:** Use the Task tool with `subagent_type: "fastapi-backend-dev"` for all backend work.
+
+## Agent Coordination Strategy
+
+When implementing features, coordinate agents in this order:
+
+1. **Database First:** Use Database Agent to design schema
+2. **Backend Second:** Use Backend Agent to create API endpoints with SQLModel
+3. **Authentication Third:** Use Auth Agent to secure endpoints and implement auth flows
+4. **Frontend Last:** Use Frontend Agent to build UI that consumes secured APIs
+
+**Example Feature Flow:**
+```
+User Request: "Add task management for authenticated users"
+
+Step 1: Database Agent
+- Design tasks table with user_id foreign key
+- Create migration script
+
+Step 2: Backend Agent
+- Create CRUD endpoints for tasks
+- Implement SQLModel models
+- Add user_id filtering
+
+Step 3: Auth Agent
+- Add JWT verification middleware to task endpoints
+- Ensure only authenticated users can access
+- Verify user_id matches JWT claims
+
+Step 4: Frontend Agent
+- Build task list UI
+- Create add/edit/delete task forms
+- Handle authentication state
+- Display user-specific tasks only
+```
+
 ## Task context
 
 **Your Surface:** You operate on a project level, providing guidance to users and executing development tasks via a defined set of tools.
@@ -122,14 +263,23 @@ You are not expected to solve every problem autonomously. You MUST invoke the us
 - Prefer the smallest viable diff; do not refactor unrelated code.
 - Cite existing code with code references (start:end:path); propose new code in fenced blocks.
 - Keep reasoning private; output only decisions, artifacts, and justifications.
+- **ALWAYS delegate to specialized agents** - Never implement auth, frontend, backend, or database work directly. Use the appropriate specialized agent via the Task tool.
 
 ### Execution contract for every request
 1) Confirm surface and success criteria (one sentence).
 2) List constraints, invariants, non‑goals.
-3) Produce the artifact with acceptance checks inlined (checkboxes or tests where applicable).
-4) Add follow‑ups and risks (max 3 bullets).
-5) Create PHR in appropriate subdirectory under `history/prompts/` (constitution, feature-name, or general).
-6) If plan/tasks identified decisions that meet significance, surface ADR suggestion text as described above.
+3) **Delegate to specialized agents** - Identify which agent(s) need to be involved and invoke them via Task tool.
+4) Produce the artifact with acceptance checks inlined (checkboxes or tests where applicable).
+5) Add follow‑ups and risks (max 3 bullets).
+6) Create PHR in appropriate subdirectory under `history/prompts/` (constitution, feature-name, or general).
+7) If plan/tasks identified decisions that meet significance, surface ADR suggestion text as described above.
+
+**Agent Delegation Rules:**
+- Authentication/Security work → Use `auth-security-specialist` agent
+- Frontend/UI work → Use `nextjs-frontend-builder` agent
+- Database design/queries → Use `neon-db-manager` agent
+- Backend API work → Use `fastapi-backend-dev` agent
+- Never implement these domains directly; always delegate to specialized agents
 
 ### Minimum acceptance criteria
 - Clear, testable acceptance criteria included
@@ -196,8 +346,115 @@ If ALL true, suggest:
 
 Wait for consent; never auto-create ADRs. Group related decisions (stacks, authentication, deployment) into one ADR when appropriate.
 
+## Project Requirements
+
+### Core Features (Basic Level)
+Transform all 5 Basic Level console features into a multi-user web application:
+
+1. **User Authentication**
+   - Implement signup/signin using Better Auth
+   - JWT token-based authentication
+   - User session management
+   - Protected routes
+
+2. **Task Management (Multi-User)**
+   - Create, read, update, delete tasks
+   - Each user sees only their own tasks
+   - User ID foreign key relationship
+   - Task filtering by authenticated user
+
+3. **RESTful API**
+   - All CRUD operations via REST endpoints
+   - Proper HTTP methods (GET, POST, PUT, DELETE)
+   - JSON request/response format
+   - JWT authentication middleware on protected endpoints
+
+4. **Persistent Storage**
+   - Neon Serverless PostgreSQL database
+   - SQLModel ORM for type-safe queries
+   - Proper schema with constraints and relationships
+   - User data isolation
+
+5. **Responsive Frontend**
+   - Next.js 16+ App Router
+   - Mobile-first responsive design
+   - Server and Client Components
+   - Form validation and error handling
+
+### Multi-User Data Isolation
+
+**Critical Requirement:** All user data must be isolated per user.
+
+**Implementation Pattern:**
+```python
+# Backend: Every query must filter by user_id from JWT
+@router.get("/tasks")
+async def get_tasks(current_user: User = Depends(get_current_user)):
+    tasks = session.exec(
+        select(Task).where(Task.user_id == current_user.id)
+    ).all()
+    return tasks
+```
+
+**Security Requirements:**
+- Never trust user_id from request body or query params
+- Always extract user_id from verified JWT token
+- Filter all queries by authenticated user
+- Validate user owns resource before update/delete operations
+
+### API Design Standards
+
+**Endpoint Structure:**
+```
+POST   /api/auth/signup          - Create new user account
+POST   /api/auth/signin          - Authenticate and get JWT
+GET    /api/auth/me              - Get current user info
+POST   /api/auth/signout         - Invalidate session
+
+GET    /api/tasks                - Get all tasks for current user
+POST   /api/tasks                - Create new task
+GET    /api/tasks/{id}           - Get specific task (verify ownership)
+PUT    /api/tasks/{id}           - Update task (verify ownership)
+DELETE /api/tasks/{id}           - Delete task (verify ownership)
+```
+
+**Response Format:**
+```json
+// Success
+{
+  "success": true,
+  "data": { ... }
+}
+
+// Error
+{
+  "success": false,
+  "error": {
+    "message": "User-friendly error message",
+    "code": "ERROR_CODE"
+  }
+}
+```
+
+### Environment Configuration
+
+**Required Environment Variables:**
+```bash
+# Database
+DATABASE_URL=postgresql://user:pass@host/db
+
+# Authentication
+JWT_SECRET=your-secret-key-here
+BETTER_AUTH_SECRET=your-better-auth-secret
+BETTER_AUTH_URL=http://localhost:3000
+
+# Frontend
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
 ## Basic Project Structure
 
+### Spec-Driven Development Files
 - `.specify/memory/constitution.md` — Project principles
 - `specs/<feature>/spec.md` — Feature requirements
 - `specs/<feature>/plan.md` — Architecture decisions
@@ -205,6 +462,30 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 - `history/prompts/` — Prompt History Records
 - `history/adr/` — Architecture Decision Records
 - `.specify/` — SpecKit Plus templates and scripts
+
+### Application Structure
+```
+hackathon-todo-app/
+├── frontend/              # Next.js 16+ App Router
+│   ├── app/              # App Router pages
+│   │   ├── (auth)/       # Auth pages (signup, signin)
+│   │   ├── (dashboard)/  # Protected pages (tasks)
+│   │   └── api/          # API routes (if needed)
+│   ├── components/       # React components
+│   ├── lib/             # Utilities, auth helpers
+│   └── public/          # Static assets
+├── backend/             # Python FastAPI
+│   ├── app/
+│   │   ├── api/         # API routes
+│   │   ├── models/      # SQLModel models
+│   │   ├── schemas/     # Pydantic schemas
+│   │   ├── auth/        # JWT auth middleware
+│   │   └── database.py  # Database connection
+│   ├── tests/           # Backend tests
+│   └── main.py          # FastAPI app entry
+├── .env                 # Environment variables
+└── README.md           # Project documentation
+```
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
