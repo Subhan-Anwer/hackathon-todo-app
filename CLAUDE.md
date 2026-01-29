@@ -489,3 +489,9 @@ hackathon-todo-app/
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+## Active Technologies
+- Neon Serverless PostgreSQL (single tasks table with user_id foreign key) (001-task-management)
+
+## Recent Changes
+- 001-task-management: Added Neon Serverless PostgreSQL (single tasks table with user_id foreign key)
