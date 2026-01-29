@@ -1,0 +1,453 @@
+openapi: 3.0.3
+info:
+  title: Task Management API
+  description: |
+    REST API for task management in multi-user todo application.
+    All endpoints require JWT authentication and enforce user data isolation.
+  version: 1.0.0
+  contact:
+    name: Task Management Feature
+    url: https://github.com/your-repo/specs/001-task-management
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: tasks
+    description: Task CRUD operations
+
+security:
+  - BearerAuth: []
+
+paths:
+  /tasks:
+    get:
+      tags:
+        - tasks
+      summary: List all tasks for authenticated user
+      description: |
+        Returns a list of all tasks owned by the authenticated user.
+        Tasks are ordered by creation date (newest first).
+        Only tasks belonging to the authenticated user are returned (enforced by backend).
+      operationId: listTasks
+      parameters:
+        - name: completed
+          in: query
+          description: Filter tasks by completion status (optional)
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successfully retrieved task list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - tasks
+      summary: Create a new task
+      description: |
+        Creates a new task owned by the authenticated user.
+        User ID is extracted from JWT token (not from request body).
+        Task is initialized with completed=false.
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tasks/{id}:
+    get:
+      tags:
+        - tasks
+      summary: Get a single task by ID
+      description: |
+        Returns full details of a specific task.
+        Only accessible if the task belongs to the authenticated user.
+        Returns 404 if task doesn't exist or doesn't belong to user (prevents user enumeration).
+      operationId: getTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Successfully retrieved task
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - tasks
+      summary: Update task title and description
+      description: |
+        Updates the title and/or description of an existing task.
+        Only accessible if the task belongs to the authenticated user.
+        Ownership, completion status, and creation timestamp are preserved.
+        Updated_at timestamp is automatically set to current time.
+      operationId: updateTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - tasks
+      summary: Delete a task permanently
+      description: |
+        Permanently deletes a task from the database.
+        Only accessible if the task belongs to the authenticated user.
+        Operation cannot be undone (no soft delete or archive).
+      operationId: deleteTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Task deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tasks/{id}/complete:
+    patch:
+      tags:
+        - tasks
+      summary: Toggle task completion status
+      description: |
+        Toggles the completion status of a task (false → true or true → false).
+        Only accessible if the task belongs to the authenticated user.
+        Updated_at timestamp is automatically set to current time.
+      operationId: toggleTaskCompletion
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Task completion status toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token issued by Better Auth authentication system
+
+  parameters:
+    TaskId:
+      name: id
+      in: path
+      description: Unique identifier of the task
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+
+  schemas:
+    Task:
+      type: object
+      description: Complete task entity with all fields
+      required:
+        - id
+        - user_id
+        - title
+        - completed
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier for the task
+          example: 42
+        user_id:
+          type: integer
+          format: int64
+          description: ID of the user who owns this task
+          example: 7
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Task title (required, 1-500 characters after trimming)
+          example: Buy groceries
+        description:
+          type: string
+          maxLength: 5000
+          nullable: true
+          description: Optional detailed description (0-5000 characters)
+          example: Milk, bread, eggs, and coffee beans
+        completed:
+          type: boolean
+          description: Completion status (false = incomplete, true = complete)
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: UTC timestamp when task was created
+          example: '2026-01-29T10:30:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          description: UTC timestamp when task was last modified
+          example: '2026-01-29T10:30:00Z'
+
+    TaskCreate:
+      type: object
+      description: Request body for creating a new task
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Task title (required, must contain non-whitespace characters)
+          example: Buy groceries
+        description:
+          type: string
+          maxLength: 5000
+          nullable: true
+          description: Optional detailed description
+          example: Milk, bread, eggs, and coffee beans
+
+    TaskUpdate:
+      type: object
+      description: Request body for updating an existing task
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Updated task title (required)
+          example: Buy groceries and cleaning supplies
+        description:
+          type: string
+          maxLength: 5000
+          nullable: true
+          description: Updated description (can be set to null to clear)
+          example: Milk, bread, eggs, coffee beans, dish soap, paper towels
+
+    Error:
+      type: object
+      description: Standard error response format
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required:
+            - message
+            - code
+          properties:
+            message:
+              type: string
+              description: Human-readable error message
+              example: Task not found
+            code:
+              type: string
+              description: Machine-readable error code
+              example: NOT_FOUND
+            details:
+              type: array
+              description: Additional error details (for validation errors)
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    description: Field name that failed validation
+                    example: title
+                  error:
+                    type: string
+                    description: Validation error message
+                    example: Title must contain non-whitespace characters
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              message: Authentication required
+              code: UNAUTHORIZED
+
+    NotFound:
+      description: |
+        Task not found or does not belong to authenticated user.
+        Returns same response for both cases to prevent user enumeration.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              message: Task not found
+              code: NOT_FOUND
+
+    ValidationError:
+      description: Request validation failed (malformed input)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              message: Validation failed
+              code: VALIDATION_ERROR
+              details:
+                - field: title
+                  error: Title must contain non-whitespace characters
+
+    UnprocessableEntity:
+      description: Request is well-formed but semantically invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              message: Title exceeds maximum length
+              code: UNPROCESSABLE_ENTITY
+              details:
+                - field: title
+                  error: Maximum length is 500 characters
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            error:
+              message: Internal server error
+              code: INTERNAL_ERROR
