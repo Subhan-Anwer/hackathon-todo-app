@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from app.database import get_session
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
-from app.auth.jwt import get_current_user, User
+from app.auth import get_current_user, User
 
 router = APIRouter()
 
@@ -32,10 +32,12 @@ def create_task(
     Security:
         - Requires valid JWT token in Authorization header
         - Task is automatically associated with authenticated user
+        - user_id is extracted from JWT claims, NOT from request body
     """
+    # CRITICAL: user_id comes from JWT, not request body
     # Create new task instance
     task = Task(
-        user_id=current_user.id,
+        user_id=current_user.user_id,  # From JWT claims (TEXT/UUID)
         title=task_data.title,
         description=task_data.description,
         completed=False,
@@ -69,11 +71,13 @@ def list_tasks(
     Security:
         - Requires valid JWT token in Authorization header
         - Only returns tasks belonging to authenticated user (user data isolation)
+        - user_id is extracted from JWT claims, NOT from query params
     """
+    # CRITICAL: Filter by user_id from JWT claims
     # Query tasks filtered by user_id, ordered by created_at descending
     statement = (
         select(Task)
-        .where(Task.user_id == current_user.id)
+        .where(Task.user_id == current_user.user_id)  # From JWT claims
         .order_by(Task.created_at.desc())
     )
 
@@ -104,15 +108,19 @@ def toggle_task_completion(
     Security:
         - Verifies task ownership (user_id matches authenticated user)
         - Returns 404 for unauthorized access (prevents user enumeration)
+        - user_id is extracted from JWT claims, NOT from request
     """
+    # CRITICAL: Verify ownership by including user_id from JWT in WHERE clause
     # Query task with ownership verification
     statement = select(Task).where(
         Task.id == task_id,
-        Task.user_id == current_user.id
+        Task.user_id == current_user.user_id  # From JWT claims
     )
     task = session.exec(statement).first()
 
     if not task:
+        # Return 404 whether task doesn't exist OR user doesn't own it
+        # This prevents user enumeration attacks
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
@@ -155,21 +163,25 @@ def update_task(
         - Verifies task ownership (user_id matches authenticated user)
         - Returns 404 for unauthorized access (prevents user enumeration)
         - Preserves task ownership, completion status, and created_at
+        - user_id is extracted from JWT claims, NOT from request
     """
+    # CRITICAL: Verify ownership by including user_id from JWT in WHERE clause
     # Query task with ownership verification
     statement = select(Task).where(
         Task.id == task_id,
-        Task.user_id == current_user.id
+        Task.user_id == current_user.user_id  # From JWT claims
     )
     task = session.exec(statement).first()
 
     if not task:
+        # Return 404 whether task doesn't exist OR user doesn't own it
+        # This prevents user enumeration attacks
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
 
-    # Update fields if provided
+    # Update fields if provided (partial update)
     if task_data.title is not None:
         task.title = task_data.title
     if task_data.description is not None:
@@ -184,7 +196,7 @@ def update_task(
     return task
 
 
-@router.delete("/tasks/{task_id}")
+@router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(
     task_id: int,
     current_user: User = Depends(get_current_user),
@@ -199,7 +211,7 @@ def delete_task(
         session: Database session
 
     Returns:
-        dict: Success message
+        None: 204 No Content on success
 
     Raises:
         HTTPException 404: If task not found or doesn't belong to user
@@ -207,15 +219,19 @@ def delete_task(
     Security:
         - Verifies task ownership (user_id matches authenticated user)
         - Returns 404 for unauthorized access (prevents user enumeration)
+        - user_id is extracted from JWT claims, NOT from request
     """
+    # CRITICAL: Verify ownership by including user_id from JWT in WHERE clause
     # Query task with ownership verification
     statement = select(Task).where(
         Task.id == task_id,
-        Task.user_id == current_user.id
+        Task.user_id == current_user.user_id  # From JWT claims
     )
     task = session.exec(statement).first()
 
     if not task:
+        # Return 404 whether task doesn't exist OR user doesn't own it
+        # This prevents user enumeration attacks
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
@@ -225,7 +241,5 @@ def delete_task(
     session.delete(task)
     session.commit()
 
-    return {
-        "success": True,
-        "data": {"message": "Task deleted successfully"}
-    }
+    # Return 204 No Content (no response body)
+    return None

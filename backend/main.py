@@ -37,8 +37,28 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy"}
+    """
+    Health check endpoint (UNPROTECTED).
+
+    This endpoint does NOT require authentication and is used for:
+    - Load balancer health checks
+    - Monitoring and alerting systems
+    - Container orchestration readiness probes
+    - Uptime monitoring services
+
+    Returns:
+        dict: Service health status with timestamp
+
+    Security Note:
+        This endpoint intentionally bypasses authentication to allow
+        external monitoring systems to verify service availability.
+    """
+    from datetime import datetime, timezone
+    return {
+        "status": "healthy",
+        "service": "todo-api",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+    }
 
 
 # Mount API routers

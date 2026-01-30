@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  title: Authentication API (Better Auth)
+  description: |
+    Authentication endpoints provided by Better Auth library.
+    These endpoints are automatically generated and managed by Better Auth.
+    This contract documents the expected behavior for frontend integration.
+
+    **Note**: This is a conceptual contract. Better Auth handles the implementation.
+  version: 1.0.0
+  contact:
+    name: Hackathon Todo App - Auth Team
+
+servers:
+  - url: http://localhost:3000/api/auth
+    description: Development server (Next.js)
+  - url: https://app.example.com/api/auth
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User signup, signin, and session management
+
+paths:
+  /signup:
+    post:
+      tags:
+        - Authentication
+      summary: Create new user account
+      description: |
+        Register a new user with email and password.
+        Better Auth automatically hashes the password with bcrypt.
+        Returns a JWT token upon successful registration.
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email address (must be unique)
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: |
+                    Password must meet security requirements:
+                    - Minimum 8 characters
+                    - At least one uppercase letter
+                    - At least one lowercase letter
+                    - At least one number
+                  example: "SecurePass123"
+                name:
+                  type: string
+                  description: Optional user display name
+                  example: "John Doe"
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Validation error or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emailExists:
+                  value:
+                    error: "Email already exists"
+                weakPassword:
+                  value:
+                    error: "Password does not meet security requirements"
+                invalidEmail:
+                  value:
+                    error: "Invalid email format"
+
+  /signin:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate user and get JWT token
+      description: |
+        Sign in with email and password credentials.
+        Returns a JWT token on successful authentication.
+        Token is also set in httpOnly cookie automatically.
+      operationId: signin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: User email address
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  description: User password
+                  example: "SecurePass123"
+      responses:
+        '200':
+          description: Authentication successful
+          headers:
+            Set-Cookie:
+              description: HttpOnly cookie with session token
+              schema:
+                type: string
+                example: "better-auth.session_token=<jwt_token>; HttpOnly; Secure; SameSite=Strict"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid credentials"
+      security: []
+
+  /signout:
+    post:
+      tags:
+        - Authentication
+      summary: Sign out current user
+      description: |
+        Invalidate the current user session.
+        Clears the httpOnly cookie containing the JWT token.
+      operationId: signout
+      responses:
+        '200':
+          description: Successfully signed out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Signed out successfully"
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+  /me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user information
+      description: |
+        Retrieve information about the currently authenticated user.
+        Requires valid JWT token in Authorization header.
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Not authenticated or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - BearerAuth: []
+
+components:
+  schemas:
+    AuthSuccessResponse:
+      type: object
+      required:
+        - user_id
+        - email
+        - jwt_token
+      properties:
+        user_id:
+          type: string
+          description: Unique user identifier (UUID)
+          example: "user-uuid-12345-67890"
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        name:
+          type: string
+          description: User display name (if provided)
+          example: "John Doe"
+        jwt_token:
+          type: string
+          description: JWT access token for API authentication
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    UserResponse:
+      type: object
+      required:
+        - user_id
+        - email
+      properties:
+        user_id:
+          type: string
+          description: Unique user identifier
+          example: "user-uuid-12345-67890"
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        name:
+          type: string
+          description: User display name
+          example: "John Doe"
+        emailVerified:
+          type: boolean
+          description: Whether email has been verified
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+          example: "2026-01-29T10:00:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Invalid credentials"
+        code:
+          type: string
+          description: Machine-readable error code
+          example: "INVALID_CREDENTIALS"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from /signin or /signup endpoint.
+        Include in Authorization header as: Bearer <token>
+
+security:
+  - BearerAuth: []

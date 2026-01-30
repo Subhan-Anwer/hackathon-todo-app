@@ -70,7 +70,7 @@ class TaskResponse(BaseModel):
     """Schema for task responses."""
 
     id: int
-    user_id: int
+    user_id: str  # TEXT/UUID from Better Auth user.id
     title: str
     description: Optional[str]
     completed: bool
