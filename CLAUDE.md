@@ -492,6 +492,7 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 
 ## Active Technologies
 - Neon Serverless PostgreSQL (single tasks table with user_id foreign key) (001-task-management)
+- Neon Serverless PostgreSQL (user table managed by Better Auth, tasks table with user_id foreign key) (002-auth-security)
 
 ## Recent Changes
 - 001-task-management: Added Neon Serverless PostgreSQL (single tasks table with user_id foreign key)

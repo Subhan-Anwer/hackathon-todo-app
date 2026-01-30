@@ -15,7 +15,13 @@ class Task(SQLModel, table=True):
     __tablename__ = "tasks"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id", index=True, nullable=False)
+    # CRITICAL: Foreign key to Better Auth's user table (singular, TEXT id)
+    user_id: str = Field(
+        foreign_key="user.id",
+        index=True,
+        nullable=False,
+        description="Owner of the task (UUID string from Better Auth)"
+    )
     title: str = Field(max_length=500, nullable=False)
     description: Optional[str] = Field(default=None, max_length=5000)
     completed: bool = Field(default=False, nullable=False)
