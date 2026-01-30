@@ -1,49 +1,73 @@
-'use client';
-
 /**
- * TaskList component - renders an array of tasks.
+ * Task list component with integrated state management.
+ * Implements T028, T049, T051 from tasks.md
  */
 
-import { Task } from '@/lib/types';
-import { TaskItem } from './TaskItem';
+'use client';
 
-interface TaskListProps {
-  tasks: Task[];
-}
+import { TaskCard } from './TaskCard';
+import { EmptyState } from './EmptyState';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { useTasks } from '@/lib/hooks/useTasks';
 
-export function TaskList({ tasks }: TaskListProps) {
-  // Empty state
-  if (tasks.length === 0) {
+/**
+ * Task list component that fetches and displays all user tasks.
+ * Handles loading, error, and empty states.
+ * Responsive grid layout for different screen sizes.
+ */
+export function TaskList() {
+  const { tasks, loading, error, toggleComplete, deleteTask, refetch } = useTasks();
+
+  // Loading state
+  if (loading) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-        <p className="text-gray-600 text-lg">No tasks yet. Create your first task!</p>
+      <div className="flex justify-center items-center min-h-[400px]">
+        <LoadingSpinner size="lg" message="Loading your tasks..." />
       </div>
     );
   }
 
-  // Task count display
-  const completedCount = tasks.filter(t => t.completed).length;
-  const incompleteCount = tasks.length - completedCount;
+  // Error state
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto mt-8">
+        <ErrorMessage
+          error={error}
+          message="Failed to load tasks. Please try again."
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
 
+  // Empty state
+  if (tasks.length === 0) {
+    return <EmptyState />;
+  }
+
+  // Task list display
   return (
     <div className="space-y-4">
-      {/* Task count */}
-      <div className="text-sm text-gray-600">
-        {tasks.length === 1 ? (
-          <p>You have 1 task</p>
-        ) : incompleteCount === 0 ? (
-          <p>{completedCount} complete</p>
-        ) : completedCount === 0 ? (
-          <p>{incompleteCount} incomplete</p>
-        ) : (
-          <p>{incompleteCount} incomplete, {completedCount} complete</p>
-        )}
+      {/* Task count header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+          Your Tasks
+          <span className="ml-2 text-sm sm:text-base font-normal text-gray-500">
+            ({tasks.length})
+          </span>
+        </h2>
       </div>
 
-      {/* Task items */}
-      <div className="space-y-3">
+      {/* Responsive task grid/list */}
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
         {tasks.map((task) => (
-          <TaskItem key={task.id} task={task} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            onToggleComplete={toggleComplete}
+            onDelete={deleteTask}
+          />
         ))}
       </div>
     </div>

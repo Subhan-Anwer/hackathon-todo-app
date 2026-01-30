@@ -1,27 +1,31 @@
-import { SignoutButton } from "@/components/auth/SignoutButton"
+/**
+ * Dashboard layout with Header and MobileNav.
+ * Implements T032, T045 from tasks.md
+ */
+
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { Header } from '@/components/layout/Header';
+import { MobileNav } from '@/components/layout/MobileNav';
 
 export default function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Todo App</h1>
-            </div>
-            <div className="flex items-center">
-              <SignoutButton />
-            </div>
-          </div>
-        </div>
-      </nav>
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {children}
-      </main>
-    </div>
-  )
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-50">
+        {/* Desktop/Tablet Header */}
+        <Header />
+
+        {/* Mobile Navigation */}
+        <MobileNav />
+
+        {/* Main content */}
+        <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          {children}
+        </main>
+      </div>
+    </ErrorBoundary>
+  );
 }

@@ -493,6 +493,8 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 ## Active Technologies
 - Neon Serverless PostgreSQL (single tasks table with user_id foreign key) (001-task-management)
 - Neon Serverless PostgreSQL (user table managed by Better Auth, tasks table with user_id foreign key) (002-auth-security)
+- TypeScript 5.x with Next.js 16+ (App Router), React 18+ + Next.js, React, Tailwind CSS, Better Auth client library, native fetch API for HTTP requests (003-frontend-integration)
+- Backend-managed Neon PostgreSQL (no direct database access from frontend) (003-frontend-integration)
 
 ## Recent Changes
 - 001-task-management: Added Neon Serverless PostgreSQL (single tasks table with user_id foreign key)

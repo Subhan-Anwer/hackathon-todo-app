@@ -1,40 +1,68 @@
 /**
  * Edit task page - form for updating an existing task.
+ * Implements T036 from tasks.md
  */
 
-import { fetchTasks } from '@/lib/api/tasks';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { TaskForm } from '@/components/tasks/TaskForm';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { taskApi } from '@/lib/api/tasks';
+import type { Task } from '@/lib/types';
 
-interface EditTaskPageProps {
-  params: Promise<{ id: string }>;
-}
+export default function EditTaskPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
+  const [task, setTask] = useState<Task | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default async function EditTaskPage({ params }: EditTaskPageProps) {
-  const { id } = await params;
-  const taskId = parseInt(id, 10);
+  useEffect(() => {
+    const fetchTask = async () => {
+      try {
+        const data = await taskApi.get(params.id);
+        setTask(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load task');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (isNaN(taskId)) {
-    notFound();
+    fetchTask();
+  }, [params.id]);
+
+  const handleSubmit = async (data: { title: string; description: string }) => {
+    if (!task) return;
+
+    await taskApi.update(task.id, {
+      title: data.title,
+      description: data.description,
+    });
+
+    router.push('/tasks');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    );
   }
 
-  // Fetch all tasks and find the one to edit
-  // In a real app, we'd have a getTaskById endpoint
-  let task;
-  try {
-    const tasks = await fetchTasks();
-    task = tasks.find((t) => t.id === taskId);
-
-    if (!task) {
-      notFound();
-    }
-  } catch (error) {
-    console.error('Failed to fetch task:', error);
+  if (error || !task) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          Failed to load task. Please try again.
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h3 className="text-lg font-medium text-red-800 mb-2">Error</h3>
+          <p className="text-sm text-red-700 mb-4">{error || 'Task not found'}</p>
+          <button
+            onClick={() => router.push('/tasks')}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            Back to Tasks
+          </button>
         </div>
       </div>
     );
@@ -42,19 +70,18 @@ export default async function EditTaskPage({ params }: EditTaskPageProps) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <Link
-          href="/tasks"
-          className="text-sm text-blue-600 hover:text-blue-800 mb-2 inline-block"
-        >
-          ← Back to tasks
-        </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Edit Task</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">Edit Task</h1>
+      <div className="bg-white rounded-lg shadow p-6">
+        <TaskForm
+          mode="edit"
+          initialValues={{
+            title: task.title,
+            description: task.description || '',
+          }}
+          onSubmit={handleSubmit}
+          submitLabel="Save Changes"
+        />
       </div>
-
-      {/* Task form */}
-      <TaskForm mode="edit" task={task} />
     </div>
   );
 }
